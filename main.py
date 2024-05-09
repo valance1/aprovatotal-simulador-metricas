@@ -6,6 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from matplotlib.widgets import CheckButtons
 
+import numpy as np
 from datetime import datetime
 import time
 
@@ -43,10 +44,10 @@ def navigate_to_simulados(email, password):
 
 # Função para extrair e plotar os dados
 def extract_simulados_data(soup):
-    print(soup.prettify())
+    #print(soup.prettify())
     data_list = []
     for div in soup.select('div.flex.w-fit.flex-col.gap-sm'):
-        print(div.prettify())
+        #print(div.prettify())
         data = {
             "Data": datetime.strptime(div.find("p", class_="text-sm").text.split("em ")[1], '%d/%m/%Y, às %H:%M'),
             "Disciplina": div.find("h4", class_="font-poppins").text.split()[0].lower(),
@@ -55,7 +56,7 @@ def extract_simulados_data(soup):
         data_list.append(data)
 
 
-    print(data_list)
+    #print(data_list)
     #df = pd.DataFrame(data_list)
     return data_list
 
@@ -117,13 +118,24 @@ def plot_simulados(grouped_simulados, selected_disciplinas):
     def hover(event):
         vis = annot.get_visible()
         if event.inaxes == ax:
+
             for line in lines_by_label.values():
                 cont, ind = line.contains(event)
+
                 if cont and line.get_visible():
-                    update_annot(ind, line)
-                    annot.set_visible(True)
-                    fig.canvas.draw_idle()
-                    return
+                    xdata, ydata = line.get_data()
+                    xdata_timestamps = [x.timestamp() for x in xdata]
+                    print("XData", xdata)
+                    print("YData: ", ydata)
+                    print("Timestamps: ", xdata_timestamps)
+                    # Calcular a distância entre o evento do mouse e cada ponto de dados
+                    distance = np.sqrt((np.array(xdata_timestamps) - event.xdata)**2 + (ydata - event.ydata)**2)
+                    print(distance)
+                    if np.min(distance) < 0.1:
+                        update_annot(ind, line)
+                        annot.set_visible(True)
+                        fig.canvas.draw_idle()
+                        return
         if vis:
             annot.set_visible(False)
             fig.canvas.draw_idle()
@@ -149,7 +161,7 @@ while True:
     simulados_data = extract_simulados_data(soup)
     grouped_simulados = group_simulados_by_disciplina(simulados_data)
     disciplinas = list(grouped_simulados.keys())
-    print(disciplinas)
+    #print(disciplinas)
     
     # Remover duplicatas e ordenar disciplinas alfabeticamente
     disciplinas = sorted(set([disciplina.capitalize() for disciplina in disciplinas]))
